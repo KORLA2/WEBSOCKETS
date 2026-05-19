@@ -1,8 +1,9 @@
 import { FaGithub } from 'react-icons/fa';
 import { FcGoogle } from 'react-icons/fc';
+import type { SignInFlow } from './types';
 
 type SignInCardProps={
-    change:()=>void
+    change:(state:SignInFlow)=>void
 }
 const SignInCard = ({change}:SignInCardProps) => {
   return (
