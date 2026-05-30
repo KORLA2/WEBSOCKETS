@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {useForm} from 'react-hook-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import api from '../../api/api';
-import axios from 'axios';
 type SignInCardProps={
     change:()=>void
 }
@@ -25,30 +24,22 @@ const {register,handleSubmit,reset,formState:{isSubmitting,errors},setError}= us
  },
  onSuccess:(data)=>{
   console.log(data)
-
+reset();
  },
  onError:(err:any)=>{
   console.log(err)
-  if(err.response?.data?.errors){
-    const errors=err.response.data.errors;
-    Object.keys(errors).forEach((key)=>{
-      setError(key as keyof SignInType, {type:"manual", message:errors[key]})
-      console.log(errors[key])
-    })
-  }
-  
- }
+  setError("email",{message:err.response.data.message}) 
+}
 })
 // React Query + mUtation to send data to the server and handle response
 const handleForm= async(data:SignInType)=>{
 
 mutation.mutate(data)
-reset();
 
 }
 
   return (
-    <div className="w-full h-full p-8">
+    <div className="w-full  h-full p-8">
     <div className="px-0 pt-0 pb-3 font-medium text-xl">Log In to Continue </div>
    <div>Use Email or another device to continue  </div>
    <div className="px-0 pb-0 space-y-2.5">
@@ -58,7 +49,7 @@ reset();
         {errors.password&&<p  className="bg-green-200  px-5 py-2 text-red-800 rounded-lg">{errors.password?.message}</p>}
        <input required type="password" {...register('password')} placeholder="Password" className="w-full outline-none border-2 border-black pr-10 pl-2 py-2 "/>
       
-       <button  disabled={mutation.isPending} type="submit" className="w-full bg-gray-800 text-white p-3 rounded-xl cursor-pointer hover:bg-gray-700 transition"> SignIn </button>
+       <button  disabled={mutation.isPending} type="submit" className="w-full bg-gray-800 text-white p-3 rounded-xl cursor-pointer hover:bg-gray-700 transition">{ mutation.isPending? "Loading..." :"SignIn" }</button>
     </form>
     <div className="w-full h-[0.6px] bg-gray-400"/>
     <div className="flex flex-col gap-y-2">
