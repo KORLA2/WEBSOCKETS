@@ -5,13 +5,15 @@ import { createSession, generateToken, verifyToken } from "./token";
 export const cookieOptions={
     httpOnly:true,
     secure:false,
-    sameSite:"none",
+    sameSite:"lax",
     maxAge: 7*24*60*60*1000 
 } as const
 
 export const SignInUserController:RequestHandler=async  (req,res)=>{
   const client = await pool.connect();
+  
 try{
+
 
     const {email,password}=req.body;
     const { rowCount}=await client.query<{email:string}>(`select email from users where email=$1`,[email]);
@@ -39,9 +41,9 @@ const { rows:[user] }=await client.query<{id:string,password:string}>(`select id
         await  client.query('COMMIT');
       return   res.status(200).json({
             message:"User signed in successfully", 
-            user: user!.id,
+            userId: user!.id,
             accessToken,
-            sessionId
+            
         });
 }
 catch(error){
@@ -63,7 +65,7 @@ try{
     await client.query('BEGIN')
  const hashedPassword=await bcrypt.hash(password, 10);
 
- const { rows:[uid] }=await client.query<{id:string}>(`insert into users (email,password,name) values ($1,$2,$3) returning id`,[email,hashedPassword,"name"]);
+ const { rows:[uid] }=await client.query<{id:string}>(`insert into users (email,password,name) values ($1,$2,$3) returning id`,[email,hashedPassword,name]);
 
    const [accessToken,sessionId,RefreshToken]=await createSession(
      uid!.id,
@@ -78,9 +80,9 @@ res.cookie('refreshToken',RefreshToken,cookieOptions);
 
 await client.query('COMMIT')
 return  res.status(201).json({message:"User created successfully", 
-    user: uid!.id,
+    userId: uid!.id,
     accessToken,
-    sessionId
+    
 });
 }
 catch(error){
@@ -123,7 +125,7 @@ export const rotateTokens:RequestHandler=async (req,res)=>{
     res.cookie('refreshToken',newRefreshToken,cookieOptions);
    return  res.status(200).json({
         accessToken,
-        session
+        
         
     })
 }
@@ -154,3 +156,20 @@ export const Logout:RequestHandler= async (req,res)=>{
     }
 }
 
+
+export const GetMe:RequestHandler=async(req,res)=>{
+    const RefreshToken=req.cookies.refreshToken;
+    if(!RefreshToken){
+    return res.status(200).json({
+        accessToken:""
+    })
+    }
+    const {userId,sessionId}=verifyToken(RefreshToken); 
+     const accessToken=generateToken(userId,sessionId,true);
+  return res.status(200).json({
+    userId,
+    accessToken
+}
+
+  )
+}

@@ -4,6 +4,8 @@ import "./index.css"
 import App from './App'
 import { BrowserRouter } from 'react-router-dom';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { Provider } from 'react-redux';
+import store from "../store/store"
 const queryClient = new QueryClient({
   
 
@@ -13,8 +15,11 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById('root')!).render(
  
   <QueryClientProvider client={queryClient}>
+ <Provider store={store}>
+
       <App/>
       <ReactQueryDevtools initialIsOpen={false} />
+ </Provider>
   </QueryClientProvider>
    
 )
