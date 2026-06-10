@@ -38,3 +38,4 @@ apiPrivate.interceptors.response.use((response)=>response,async(error)=>{
 
 
 export default api;
+

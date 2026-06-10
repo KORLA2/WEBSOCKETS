@@ -60,19 +60,19 @@ mutation.mutate(data)
        }
        {<>
         {errors.email&&<p  className="bg-green-100 px-5 py-2 w-full text-red-800 rounded-lg">{errors.email?.message}</p>}
-         <input {...register('email')} required  placeholder="Email" className="w-full outline-none rounded-lg ring-2 ring-gray-800 focus:ring-blue-800  sm:text-sm sm:leading-6 p-2 "/>
+         <input {...register('email')} required  placeholder="Email" className="w-full outline-none rounded-lg ring-2 ring-gray-800 focus:ring-blue-800 ring-inset sm:text-sm sm:leading-6 p-2 "/>
        </>
        }
        {
           <>
          {errors.password&&<p  className="bg-green-200  px-5 py-2 text-red-800 rounded-lg">{errors.password?.message}</p>}
-         <input  {...register('password')} required type="password" placeholder="Password" className="w-full ring-2 ring-gray-800 focus:ring-blue-800  sm:text-sm sm:leading-6 rounded-lg outline-none  pr-10 pl-2 py-2 "/>
+         <input  {...register('password')} required type="password" placeholder="Password" className="w-full ring-2 ring-gray-800 focus:ring-blue-800 ring-inset sm:text-sm sm:leading-6 rounded-lg outline-none  pr-10 pl-2 py-2 "/>
           </>
       }
       {
         <>
          {errors.confirmPassword&&<p  className="bg-green-200 px-5 py-2 text-red-800 rounded-lg">{errors.confirmPassword?.message}</p>}
-        <input required type="password" {...register('confirmPassword')} placeholder=" Confirm Password" className="w-full ring-2 ring-gray-800 focus:ring-blue-800  sm:text-sm sm:leading-6 rounded-lg outline-none  pr-10 pl-2 py-2 "/>
+        <input required type="password" {...register('confirmPassword')} placeholder=" Confirm Password" className="w-full ring-2 ring-gray-800 focus:ring-blue-800  ring-inset sm:text-sm sm:leading-6 rounded-lg outline-none  pr-10 pl-2 py-2 "/>
         </>
       }
        <button type="submit" className="w-full bg-gray-800 text-white p-3 rounded-xl cursor-pointer hover:bg-gray-700 transition"> {mutation.isPending?"Loading...":"SignUp" }</button>
