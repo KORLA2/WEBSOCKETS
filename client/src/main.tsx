@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Provider } from 'react-redux';
 import store from "../store/store"
+import { Toaster } from 'react-hot-toast';
 const queryClient = new QueryClient({
   
 
@@ -16,7 +17,7 @@ createRoot(document.getElementById('root')!).render(
  
   <QueryClientProvider client={queryClient}>
  <Provider store={store}>
-
+    <Toaster/>
       <App/>
       <ReactQueryDevtools initialIsOpen={false} />
  </Provider>
