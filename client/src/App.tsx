@@ -1,11 +1,14 @@
 import axios from 'axios';
-import {useSearchParams} from "react-router-dom"
+import {Route, Routes, useSearchParams} from "react-router-dom"
 import { useQuery } from '@tanstack/react-query';
 import {useState} from 'react';
 import Auth from './components/Auth/Auth';
 import api from './api/api';
 import { setUser } from '../store/slices/authSlice';
 import { useDispatch } from 'react-redux';
+import Users from './components/Users/page';
+import GuestRoute from './Routes/GuestRoute';
+import PrivateRoute from './Routes/PrivateRoute';
 const App = () => {
   const dispatch=useDispatch();
   const {data,isLoading}=useQuery({queryKey:["getme"],queryFn: async()=>{
@@ -26,7 +29,17 @@ const App = () => {
 )
 
    return <div className="h-screen">
-  <Auth/>
+<Routes>
+
+<Route element={<GuestRoute userId={data?.userId}/>}>
+  <Route path="/auth" element={<Auth/>} />
+</Route>
+<Route element={<PrivateRoute userId={data?.userId} />}>
+  <Route path="/users" element={<Users/>} />
+</Route>
+   <Route path='*' element={<div>404 path not found</div>}/>
+</Routes>
+   
    </div>
 
   

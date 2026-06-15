@@ -25,7 +25,7 @@ export const createSession=async (userId:string,userAgent:string,ip:string,clien
    
     const {rows:[sessionId]}=await client.query<{id:string}>(`
        insert into session 
-       (uid,useragent,ip,refreshtoken) 
+       (userid,useragent,ip,refreshtoken) 
        values($1,$2,$3,$4) returning id`
        ,[userId,userAgent,ip,'']);
        console.log(sessionId)

@@ -23,8 +23,8 @@ try{
     })
     }
    await  client.query('BEGIN');
-const { rows:[user] }=await client.query<{id:string,password:string}>(`select id,password from users where email=$1`,[email]);
- const isPasswordValid= await bcrypt.compare(password,user!.password);
+const { rows:[user] }=await client.query<{id:string,hashedpassword:string}>(`select id,hashedpassword from users where email=$1`,[email]);
+ const isPasswordValid= await bcrypt.compare(password,user!.hashedpassword);
  if(!isPasswordValid){
    return res.status(400).json({
         message:"Invalid Email or Password"
@@ -65,7 +65,7 @@ try{
     await client.query('BEGIN')
  const hashedPassword=await bcrypt.hash(password, 10);
 
- const { rows:[uid] }=await client.query<{id:string}>(`insert into users (email,password,name) values ($1,$2,$3) returning id`,[email,hashedPassword,name]);
+ const { rows:[uid] }=await client.query<{id:string}>(`insert into users (email,hashedpassword,name) values ($1,$2,$3) returning id`,[email,hashedPassword,name]);
 
    const [accessToken,sessionId,RefreshToken]=await createSession(
      uid!.id,

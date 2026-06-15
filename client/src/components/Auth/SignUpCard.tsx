@@ -8,14 +8,15 @@ import api from '../../api/api';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUser } from '../../../store/slices/authSlice';
 import type { RootState } from '../../../store/store';
-type SignInCardProps={
+import { useNavigate } from 'react-router-dom';
+type SignUpCardProps={
     change:()=>void
 }
 
-
-const SignUpCard = ({change}:SignInCardProps) => {
+const SignUpCard = ({change}:SignUpCardProps) => {
 
   const dispatch=useDispatch()
+  const navigate=useNavigate();
 const {register,handleSubmit,formState:{isSubmitting,errors},setError,reset}=useForm<SignUpType>({
   resolver:zodResolver(signUpSchema),
   mode:"onBlur"
@@ -31,7 +32,7 @@ dispatch(setUser({
     userId:data.userId,
     accessToken:data.accessToken
   }))
-  reset();
+   navigate("/users");
 },
 onError:(err:any)=>{
 console.log("The Error is ",err.response,err);

@@ -8,12 +8,13 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import api, { apiPrivate } from '../../api/api';
 import { useDispatch } from 'react-redux';
 import {setUser} from "../../../store/slices/authSlice"
+import { useNavigate } from 'react-router-dom';
 type SignInCardProps={
     change:()=>void
 }
 const SignInCard = ({change}:SignInCardProps) => {
 const dispatch=useDispatch();
-
+const navigate=useNavigate();
 const {register,handleSubmit,reset,formState:{isSubmitting,errors},setError}= useForm<SignInType>({
   resolver: zodResolver(signInSchema),
   mode:"onBlur"
@@ -23,7 +24,7 @@ const {register,handleSubmit,reset,formState:{isSubmitting,errors},setError}= us
 
   const mutation=useMutation({  
  mutationFn:async(data:SignInType)=>{
-     const res= await apiPrivate.post("/auth/signIn",data);
+     const res= await api.post("/auth/signIn",data);
      return res.data;
  },
  onSuccess:(data)=>{
@@ -32,7 +33,8 @@ const {register,handleSubmit,reset,formState:{isSubmitting,errors},setError}= us
     userId:data.userId,
     accessToken:data.accessToken
   }))
-reset();
+
+navigate("/users");
  },
  onError:(err:any)=>{
   console.log(err)
