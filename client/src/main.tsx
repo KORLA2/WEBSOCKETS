@@ -8,8 +8,14 @@ import { Provider } from 'react-redux';
 import store from "../store/store"
 import { Toaster } from 'react-hot-toast';
 const queryClient = new QueryClient({
-  
-
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      staleTime: Infinity,
+    }
+  }
 });
 
 
@@ -20,7 +26,6 @@ createRoot(document.getElementById('root')!).render(
  <Provider store={store}>
     <Toaster/>
       <App/>
-      <ReactQueryDevtools initialIsOpen={false} />
  </Provider>
  </BrowserRouter>
   </QueryClientProvider>

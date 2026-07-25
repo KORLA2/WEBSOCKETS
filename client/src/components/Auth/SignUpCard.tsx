@@ -35,7 +35,6 @@ dispatch(setUser({
    navigate("/users");
 },
 onError:(err:any)=>{
-console.log("The Error is ",err.response,err);
 setError("email",{message:err.response.data.message})
 }
      })

@@ -2,10 +2,16 @@ import {createSlice, type PayloadAction} from "@reduxjs/toolkit"
 
 type Auth={
     userId:string,
+    email? :string,
+    name?:string,
+    image?:string
     accessToken:string
 }
 const initialState:Auth={
     userId:'',
+    name:"",
+    email:"",
+    image:"",
     accessToken:"",
 }
 
@@ -14,20 +20,16 @@ name:"authSlice",
 initialState,
 reducers:{
   
-   setUser:(state,action:PayloadAction<{
-    userId: string;
-    accessToken: string;
-  }>)=>{
-   state.userId=action.payload.userId;
-   state.accessToken=action.payload.accessToken
+   setUser(state,action:PayloadAction<Auth>){ console.log(action.type);return action.payload},
 
-   },
    setAccessToken:(state,action)=>{
     state.accessToken=action.payload.accessToken
    }
+   
 }   
 
 })
+
 
 export const {setUser,setAccessToken}=authSlice.actions
 export default authSlice.reducer;

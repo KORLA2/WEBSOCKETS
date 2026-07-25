@@ -47,7 +47,6 @@ const { rows:[user] }=await client.query<{id:string,hashedpassword:string}>(`sel
         });
 }
 catch(error){
-    console.error(error);
     await  client.query('ROLLBACK');
    return  res.status(400).json({message:"Error signing in user"});
 }
@@ -57,7 +56,6 @@ export const SignUpUserController:RequestHandler=async (req,res)=>{
 try{
     let {email,password,name}=req.body;
     const {rowCount,rows}=await client.query(`select email from users where email=$1`,[req.body.email]);
-    console.log(rowCount,rows)
     if(rowCount!>0){
        return  res.status(400).json({message:"User already exists"});
     }
@@ -166,10 +164,41 @@ export const GetMe:RequestHandler=async(req,res)=>{
     }
     const {userId,sessionId}=verifyToken(RefreshToken); 
      const accessToken=generateToken(userId,sessionId,true);
-  return res.status(200).json({
-    userId,
+ const {rows:[user],rowCount}=  await pool.query<{id:string,email:string,name:string,image:string}>(`select id, name, email,image from users where id=$1`,[userId]);
+ if(!rowCount)
+return res.status(400).json({
+    message:"Invalid Request"
+})
+const {id:_,...rest}=user!;
+ return res.status(200).json({
+   user:{
+     userId,
+     ...rest,
     accessToken
+   }
 }
 
   )
+}
+
+
+
+export const GetotherUserController:RequestHandler=async(req,res)=>{
+try{
+    const {id}=req.params;
+    console.log("MY ID is ",id)
+        const {rowCount,rows:[user]}= await pool.query<{id:string,name:string,image:string}>(`select  id, name , image from users  where id=$1`,[id])   
+         if(!rowCount)
+            return res.status(404).json({
+             "message":"The Requested User Not Found"
+            }) 
+
+            return res.status(200).json({
+                user
+            })
+    }
+    catch(err){
+    console.log("The error is" ,err)
+    }
+
 }

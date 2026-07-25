@@ -1,7 +1,7 @@
 import type { RequestHandler} from "express";
 import {signInSchema,signUpSchema} from "../schemas/AuthSchema";
 
-export const ValidateUser:RequestHandler=(req,res,next)=>{
+export const ValidateSchema:RequestHandler=(req,res,next)=>{
   const path=req.path;
   const schema=path=="/signIn"?signInSchema:signUpSchema;
   const result=schema.safeParse(req.body);
@@ -11,3 +11,4 @@ export const ValidateUser:RequestHandler=(req,res,next)=>{
   }
   next();
 } 
+

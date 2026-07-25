@@ -28,16 +28,14 @@ const {register,handleSubmit,reset,formState:{isSubmitting,errors},setError}= us
      return res.data;
  },
  onSuccess:(data)=>{
-  console.log(data);
-  dispatch(setUser({
-    userId:data.userId,
-    accessToken:data.accessToken
-  }))
+   dispatch(setUser({
+     userId:data.userId,
+     accessToken:data.accessToken
+    }))
+    navigate("/users");
 
-navigate("/users");
  },
  onError:(err:any)=>{
-  console.log(err)
   setError("email",{message:err.response.data.message}) 
 }
 })

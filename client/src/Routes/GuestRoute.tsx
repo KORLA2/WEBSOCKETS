@@ -1,13 +1,15 @@
+import { useSelector } from "react-redux";
 import { Navigate, Outlet } from "react-router-dom";
+import type { RootState } from "../../store/store";
 
-const GuestRoute = ({ userId }: { userId?: string }) => {
-  if(userId=="")
-    return <h1>Loading...</h1>
+const GuestRoute = () => {
+  const userId =useSelector((state:RootState)=>state.authSlice.userId);
+  if(!userId)return <Outlet/>
 
     if(userId){
     return <Navigate to="/users" replace />
   }
-    return <Outlet/>
+    // return <Outlet/>
 
 }
 

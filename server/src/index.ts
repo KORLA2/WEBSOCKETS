@@ -4,6 +4,9 @@ import { AuthRouter } from '../routes/AuthRoutes';
 import cookieParser from 'cookie-parser'
 import morgan from "morgan"
 import cors from "cors"
+import { ConversationRouter } from '../routes/ConversationRoutes';
+import { MessageRouter } from '../routes/MessageRouter';
+import { userRouter } from '../routes/UserRoutes';
 const app = express();
 app.use(express.json());
 app.use(cookieParser())
@@ -15,8 +18,9 @@ app.use(cors(
 ))
 app.use(morgan("dev"))
 app.use("/api/auth",AuthRouter)
-
-
+app.use("/api/users",userRouter);
+app.use("/api/conversations",ConversationRouter)
+app.use("/api/messages",MessageRouter);
 app.use("/",(req,res)=>{
     res.status(404).json({message:"Route not found"})
 })

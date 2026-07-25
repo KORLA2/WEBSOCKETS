@@ -16,8 +16,10 @@ export const generateToken=(userId:string,sessionId:string,isAccessToken:boolean
     })
 
 }
+
+
 export  const verifyToken=(token:string)=>{
-return jwt.verify(token,secretKey)
+return jwt.verify(token,secretKey) ;
 }
 
 
