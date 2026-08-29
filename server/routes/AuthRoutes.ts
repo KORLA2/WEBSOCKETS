@@ -7,5 +7,5 @@ export const AuthRouter =express.Router();
 AuthRouter.post("/signIn",ValidateSchema,SignInUserController);
 AuthRouter.post("/signUp",ValidateSchema,SignUpUserController);
 AuthRouter.get("/refresh",rotateTokens);
-AuthRouter.get("/logout",Logout);
+AuthRouter.post("/logout",Logout);
 AuthRouter.get("/getme",GetMe);

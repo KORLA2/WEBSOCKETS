@@ -20,16 +20,18 @@ name:"authSlice",
 initialState,
 reducers:{
   
-   setUser(state,action:PayloadAction<Auth>){ console.log(action.type);return action.payload},
+   setUser(state,action:PayloadAction<Auth>){ return action.payload},
 
    setAccessToken:(state,action)=>{
     state.accessToken=action.payload.accessToken
-   }
+   },
+   logout:()=>initialState
+   
    
 }   
 
 })
 
 
-export const {setUser,setAccessToken}=authSlice.actions
+export const {setUser,setAccessToken,logout}=authSlice.actions
 export default authSlice.reducer;
