@@ -8,12 +8,12 @@ type GetUserType={
 }
 export const useOtherUser=(id:string)=>{
 
-    const {data,isLoading}=useQuery({queryKey:["otherUser"],queryFn:async()=>{
+    const {data,isLoading}=useQuery({queryKey:["otherUser",id],queryFn:async()=>{
         console.log("My Id is ",id)
             const res=await apiPrivate.get<GetUserType>(`/auth/otherUser/${id}`);
             return res.data;
     }})
-     console.log(data);
+     console.log("The Other User is ",data);
      return {
         OtherUser:data?.user
      }

@@ -6,7 +6,6 @@ import type { RootState } from '../../store/store';
 const PrivateRoute = () => {
   const userId =useSelector((state:RootState)=>state.authSlice.userId)
 
-    if(userId=="") return <h1>Private Laoding...</h1>
     if(!userId)
         return <Navigate to="/auth" replace />
 return <Outlet/>

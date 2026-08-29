@@ -50,6 +50,10 @@ catch(error){
     await  client.query('ROLLBACK');
    return  res.status(400).json({message:"Error signing in user"});
 }
+ finally{
+    client.release();
+ }
+
 }
 export const SignUpUserController:RequestHandler=async (req,res)=>{
     const client= await pool.connect();
@@ -96,7 +100,6 @@ finally{
 }
 
 
-
 export const rotateTokens:RequestHandler=async (req,res)=>{
 
  const refreshtoken= req.cookies.refreshToken;
@@ -126,6 +129,8 @@ export const rotateTokens:RequestHandler=async (req,res)=>{
         
         
     })
+
+
 }
 
 
@@ -138,7 +143,13 @@ export const Logout:RequestHandler= async (req,res)=>{
                 message:"No Token found"
             })
         }
-         const {sessionId}= verifyToken(refToken);
+         const decoded= verifyToken(refToken);
+         if(typeof decoded == "string"|| !decoded.sessionId|| !decoded.userId){
+               return res.status(401).json({
+                    message:"Invalid Token"
+                })
+         }
+         const {sessionId}= decoded
          await pool.query(`delete from session where id=$1`,[sessionId]);
       res.clearCookie('refreshToken');
     
@@ -156,14 +167,23 @@ export const Logout:RequestHandler= async (req,res)=>{
 
 
 export const GetMe:RequestHandler=async(req,res)=>{
-    const RefreshToken=req.cookies.refreshToken;
-    if(!RefreshToken){
-    return res.status(200).json({
-        accessToken:""
-    })
+    try{
+ console.log("Hellooooooooooooo")
+    const refreshToken=req.cookies.refreshToken;
+    if(!refreshToken){
+        return res.status(401).json({
+            message:"You are not authorized to access this page"
+        })
     }
-    const {userId,sessionId}=verifyToken(RefreshToken); 
-     const accessToken=generateToken(userId,sessionId,true);
+    const decoded=verifyToken(refreshToken);
+ if(typeof decoded=="string"||!decoded.userId||!decoded.sessionId){ 
+
+    return res.status(401).json({
+        message:"Invalid Token"
+    })
+ }
+ const {userId,sessionId}=decoded
+ const accessToken=generateToken(userId,sessionId,true)
  const {rows:[user],rowCount}=  await pool.query<{id:string,email:string,name:string,image:string}>(`select id, name, email,image from users where id=$1`,[userId]);
  if(!rowCount)
 return res.status(400).json({
@@ -180,25 +200,12 @@ const {id:_,...rest}=user!;
 
   )
 }
-
-
-
-export const GetotherUserController:RequestHandler=async(req,res)=>{
-try{
-    const {id}=req.params;
-    console.log("MY ID is ",id)
-        const {rowCount,rows:[user]}= await pool.query<{id:string,name:string,image:string}>(`select  id, name , image from users  where id=$1`,[id])   
-         if(!rowCount)
-            return res.status(404).json({
-             "message":"The Requested User Not Found"
-            }) 
-
-            return res.status(200).json({
-                user
-            })
-    }
-    catch(err){
-    console.log("The error is" ,err)
-    }
-
+catch(err:any){
+  return res.status(403).json({
+    "message":"Token expired"
+  }) 
 }
+}
+
+
+

@@ -1,6 +1,6 @@
 import React from 'react'
 
-const Avatar = ({image,className}:{image?:string,className?:string}) => {
+const Avatar = ({image,className}:{image?:string|null,className?:string}) => {
     const classes= className||"w-9 h-9  md:w-11 md:h-11"
   return (
     <div className={`relative cursor-pointer overflow-hidden ${classes}`}>

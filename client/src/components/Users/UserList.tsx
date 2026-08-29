@@ -1,10 +1,15 @@
 import React from 'react'
 import UserBox from './UserBox';
 import { useUsers } from '../../hooks/useUsers';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../store/store';
 
 
 const UserList = () => {
-const {data:users=[],isLoading,isError}=useUsers();
+let  {data:users=[],isLoading,isError}=useUsers();
+const userId=useSelector((state:RootState)=>state.authSlice.userId)
+ users=users?.filter((user)=>user.id!==userId);
+
   return (
     <div className="fixed inset-y-0 lg:left-20 border-r bg-amber-400  border-gray-900 w-full lg:w-80 block left-0 pb-20 lg:pb-0   overflow-y-auto">
        <div className="px-5">

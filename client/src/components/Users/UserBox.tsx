@@ -2,11 +2,31 @@ import React from 'react'
 import Avatar from '../Avatar';
 import { useNavigate } from 'react-router-dom';
 import type { User } from '../../types/User';
+import { useMutation } from '@tanstack/react-query';
+import { apiPrivate } from '../../api/api';
+import { toast } from 'react-hot-toast';
 
 const UserBox = ({user}:{user:User}) => {
+
     const navigate=useNavigate();
+   const mutation=useMutation({
+        mutationFn:async()=>{
+          const res=  await apiPrivate.post("/conversations/direct",{
+            receiverId: user.id    
+          })
+          return res.data                
+        },
+        onSuccess:(data)=>{
+            navigate(`/conversations/${data.cid}`)
+        },
+        onError:()=>{
+           toast.error('Something Error happend')
+        }
+   })
+
+
   return (
-    <div onClick={()=>navigate(`/conversations/${user.id}`)} className="w-full bg-white hover:bg-gray-300 
+    <div onClick={()=>mutation.mutate()} className="w-full bg-white hover:bg-gray-300 
     flex items-center space-x-3 p-2 rounded-lg  transition-all transition-200 cursor-pointer">
    <Avatar className="h-9 w-9" image={user.image}/>
    <div className="flex-1 min-w-0">

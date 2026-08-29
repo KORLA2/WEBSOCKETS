@@ -5,7 +5,6 @@ export const ProtectRoute:RequestHandler=(req,res,next)=>{
     try{
 
  const authHeader=req.headers.authorization;
-
  if(!authHeader){
      return res.status(401).json({
          message:"You are not authorized to access this page"
@@ -22,6 +21,7 @@ const decoded= verifyToken(accessToken!);
         message:"Invalid Token"
     })
  }
+ console.log(decoded)
 const {userId,sessionId}=decoded;
 req.user={userId,sessionId};
    next();

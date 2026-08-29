@@ -8,14 +8,14 @@ import useConversation from "../../hooks/useConversation";
 import Conversation from "../Conversations/Conversation";
 const Page = () => {
     const {pathname}=useLocation();
-    const {isOpen,receiverId,myFriends}=useConversation();
+    const {isOpen,conversationId}=useConversation();
     console.log(isOpen)
   return (<div className="h-full flex">
     <div className={` lg:flex-1 flex w-full ring-10 ${isOpen?'max-lg:hidden':'block'} ring-inset ring-blue-500`}>
 
     <SideBar/>
   
-    {pathname==="/users"?<UserList/>:<ConversationList myFriends={myFriends} isOpen={isOpen} receiverId={receiverId} />}
+    {pathname==="/users"?<UserList/>:<ConversationList />}
     </div>
 
     <MobileFooter/>
@@ -24,7 +24,7 @@ const Page = () => {
         <EmptyState/>
       </div>
      { isOpen&&<div className={`h-full w-full `}>
-          <Conversation id={receiverId}/>
+          <Conversation key={conversationId} id={conversationId}/>
       </div>
       }
     </div>
