@@ -1,5 +1,6 @@
 import type {RequestHandler} from "express"
 import { pool } from "../db/connect";
+import { onlineUsers } from "../src/types/OnlineUsers";
 type LastMessage={
     conversationId:string,
     friendId:string,
@@ -32,7 +33,6 @@ name:string
 export const createDirectConversation:RequestHandler=async(req,res)=>{
     const client=await pool.connect();
     try{  
-console.log(req.user)
 
        if (!req.user) {
            return res.status(401).json({ message: "Unauthorized" });
@@ -111,68 +111,97 @@ export const getConversationById:RequestHandler = async (req,res) => {
 try{
 
   if(!req.user){
-     return res.status(400).json({
+     return res.status(401).json({
         "message":"You are not autohrized to access this page"
      })
   }
+  const {userId}=req.user
 
-    const {rowCount, rows:[member]}= await pool.query<{deletedat: Date | null}>(`
+   const {rowCount} = await pool.query(
+      `
+      SELECT 1
+      FROM conversationmembers
+      WHERE conversationid = $1
+        AND uid = $2
+      `,
+      [id,userId]
+    );
+
+    if (rowCount === 0) {
+      return res.status(403).json({
+        message: "You are not authorized to access this page",
+      });
+    }
+
+    const {rowCount:rc, rows:[member]}= await pool.query<{deletedat: Date | null}>(`
       select deletedat from conversationmembers where conversationid=$1 and
       uid=$2
       `,[id,req.user.userId])
     
-      if(!rowCount){
+      if(!rc){
         return res.status(403).json({
           message:"You are not authorized to access this conversation "
         })
       }
+  console.log(member?.deletedat,"This is the deleted at value")
 
-    const conversations= await pool.query<{id:string}>('select id from conversation where id=$1',[id]);
-    if(conversations.rowCount===0){
-        console.log("Conversation not found");
-        return res.status(200).json({
-            message:"Conversation not found"
-        })
-    }
-    const messages=await pool.query<SenderMessage>(`
-    SELECT
-    m.id,
-    sender.id as senderid,
-    sender.name AS sendername,
-    m.body,
-    m.image,
-    m.createdat,
-    ARRAY_AGG(seenuser.name) AS seenby
-    FROM message m
-    JOIN conversationmembers me
-    ON me.conversationid = m.cid
-    AND me.uid = $2
-    JOIN users sender
-    ON sender.id = m.senderid
+  const [messagesResult, readStatesResult] = await Promise.all([ pool.query(
+        `
+        SELECT
+            m.id AS id,
+            m.cid AS "conversationId",
+            m.body,
+            m.senderid AS "senderId",
+            m.createdat AS "createdAt",
+            m.image as "image"    ,
+            u.name AS "senderName",
+            u.image AS "senderAvatar",
 
-    LEFT JOIN seen s
-    ON s.mid = m.id
+            (m.senderid = $2) AS "isMine"
 
-    LEFT JOIN users seenuser
-    ON seenuser.id = s.seenid
-    WHERE m.cid = $1
-    AND (
-      $3::timestamp IS NULL
-      OR m.createdat > $3::timestamp
-    )
-    GROUP BY
-        m.id,
-        sender.id,
-        sender.name,
-        m.body,
-        m.image,
-        m.createdat
+        FROM messages m
 
-    ORDER BY m.createdat desc
-    limit 10`,[conversations.rows[0]?.id,req.user.userId,member?.deletedat])
+        JOIN users u
+            ON u.id = m.senderid
+              
+        WHERE m.cid = $1
+        AND NOT EXISTS (
+            SELECT 1
+            FROM deletedmessages dm
+            WHERE dm.mid = m.id and dm.uid = $2
+        )
+        AND m.createdat> COALESCE($3, '1970-01-01'::timestamp)
+        ORDER BY
+            m.createdat ASC,
+            m.id ASC
+        `,
+        [id, userId,member?.deletedat]
+      ),
+
+       pool.query(
+        `
+        SELECT
+            cm.uid AS "userId",
+            u.name,
+            u.image,
+            cm.lastreadat AS "lastReadAt"
+
+        FROM conversationmembers cm
+
+        JOIN users u
+            ON u.id = cm.uid
+
+        WHERE cm.conversationid = $1
+          AND cm.uid <> $2
+        `,
+        [id, userId]
+       )    
+    
+    ])
+ 
     return res.status(200).json({
-        conversation: conversations.rows[0],
-        messages: messages.rows.sort((a,b)=>a.createdat.getTime()-b.createdat.getTime())
+      messages: messagesResult.rows,
+      readStates: readStatesResult.rows,
     });
 }
 catch(err){
@@ -197,112 +226,149 @@ export const getAllMyConversations:RequestHandler=async(req,res)=>{
 
 
  const { rows } = await pool.query(
-  `
-  SELECT
-    c.id AS "id",
+  `WITH my_conversations AS (
+    SELECT
+        cm.conversationid,
+        cm.lastreadat,
+        cm.deletedat
+    FROM conversationmembers cm
+
+    WHERE cm.uid = $1
+),
+
+conversation_members AS (
+    SELECT
+        cm.conversationid,
+
+        jsonb_agg(
+            jsonb_build_object(
+                'id', u.id,
+                'name', u.name,
+                'image', u.image,
+                'email', u.email
+            )
+            ORDER BY u.name
+        ) AS members
+
+    FROM conversationmembers cm
+
+    JOIN users u
+        ON u.id = cm.uid
+
+    WHERE cm.uid <> $1
+
+    GROUP BY cm.conversationid
+),
+
+latest_messages AS (
+    SELECT DISTINCT ON (m.cid)
+        m.cid,
+        m.id,
+        m.body,
+        m.senderid,
+        m.createdat,
+        u.name AS sender_name
+
+    FROM messages m
+   
+    JOIN users u
+        ON u.id = m.senderid
+    and not exists(
+    select 1 from deletedmessages dm where dm.mid=m.id and dm.uid=$1 
+    )
+
+    ORDER BY
+        m.cid,
+        m.createdat DESC,
+        m.id DESC
+),
+
+unread_counts AS (
+    SELECT
+        mc.conversationid,
+
+        COUNT(m.id) AS unread_count
+
+    FROM my_conversations mc
+
+    JOIN messages m
+        ON m.cid = mc.conversationid
+       AND m.senderid <> $1
+       AND (
+            mc.lastreadat IS NULL
+            OR m.createdat > mc.lastreadat
+       )
+
+    GROUP BY mc.conversationid
+)
+
+SELECT
+    c.id AS id,
+    c.isgroup,
+    CASE
+        WHEN c.isgroup = true
+            THEN c.name
+        ELSE
+            cm.members -> 0 ->> 'name'
+    END AS title,
+
+    c.image as groupimage,
+    cm.members,
 
     CASE
-      WHEN c.isgroup = true THEN 'group'
-      ELSE 'direct'
-    END AS "type",
-
-    CASE
-      WHEN c.isgroup = true THEN COALESCE(c.name, 'Unnamed group')
-      ELSE COALESCE(other_user.name, 'Unknown user')
-    END AS "title",
-
-    CASE
-      WHEN c.isgroup = true THEN NULL
-      ELSE other_user.image
-    END AS "avatar",
-
-    COALESCE(member_data.members, '[]'::jsonb) AS "members",
-
-    CASE
-      WHEN last_message.id IS NULL THEN NULL
-      ELSE jsonb_build_object(
-        'id', last_message.id,
-        'body', last_message.body,
-        'senderId', last_message.senderid,
-        'senderName', COALESCE(sender.name, 'Unknown user'),
-        'createdAt', last_message.createdat,
-        'isMine', last_message.senderid = $1,
-        'isSeenByMe',
-          CASE
-            WHEN last_message.senderid = $1 THEN true
-            WHEN EXISTS (
-              SELECT 1
-              FROM seen s
-              WHERE s.mid = last_message.id
-                AND s.seenid = $1
-            ) THEN true
-            ELSE false
-          END
-      )
+        WHEN lm.id IS NULL
+            THEN NULL
+        ELSE
+            jsonb_build_object(
+                'id', lm.id,
+                'body', lm.body,
+                'senderId', lm.senderid,
+                'senderName', lm.sender_name,
+                'createdAt', lm.createdat,
+                'isMine', lm.senderid = $1
+            )
     END AS "lastMessage",
 
-    c.lastmessageat AS "updatedAt"
+    mc.lastreadat AS "lastReadAt",
 
-  FROM conversation c
+    COALESCE(
+        uc.unread_count,
+        0
+    ) AS "unreadCount",
 
-  JOIN conversationmembers me
-    ON me.conversationid = c.id
-   AND me.uid = $1
+    COALESCE(
+        lm.createdat,
+        c.createdat
+    ) AS "updatedAt"
 
-  LEFT JOIN LATERAL (
-    SELECT m.*
-    FROM message m
-    WHERE m.cid = c.id
-      AND (
-        me.deletedat IS NULL
-        OR m.createdat > me.deletedat
-      )
-    ORDER BY m.createdat DESC
-    LIMIT 1
-  ) last_message ON true
+FROM my_conversations mc
 
-  LEFT JOIN users sender
-    ON sender.id = last_message.senderid
+JOIN conversation c
+    ON c.id = mc.conversationid
 
-  LEFT JOIN LATERAL (
-    SELECT u.id, u.name, u.image
-    FROM conversationmembers cm
-    JOIN users u
-      ON u.id = cm.uid
-    WHERE cm.conversationid = c.id
-      AND cm.uid <> $1
-    LIMIT 1
-  ) other_user ON true
+LEFT JOIN conversation_members cm
+    ON cm.conversationid = c.id
 
-  LEFT JOIN LATERAL (
-  SELECT jsonb_agg(
-    jsonb_build_object(
-      'id', u.id,
-      'name', u.name,
-      'email', u.email,
-      'image', u.image,
-      'isMe', u.id = $1
-    )
-    ORDER BY
-      CASE WHEN u.id = $1 THEN 0 ELSE 1 END,
-      u.name
-  ) AS members
-  FROM conversationmembers cm
-  JOIN users u
-    ON u.id = cm.uid
-  WHERE cm.conversationid = c.id
-) member_data ON true
+LEFT JOIN latest_messages lm
+    ON lm.cid = c.id
+    and lm.createdat> COALESCE(mc.deletedat,'1970-01-01'::timestamp)
+LEFT JOIN unread_counts uc
+    ON uc.conversationid = c.id
 
-  ORDER BY c.lastmessageat DESC NULLS LAST, c.createdat DESC;
+ORDER BY
+    COALESCE(
+        lm.createdat,
+        c.createdat
+    ) DESC;
   `,
   [userId]
 );
-    console.log("This is my rows",rows)
+    console.log("This is my rows",+rows)
 
 
 
         return res.status(200).json({
-            myFriends:rows
+            myconversations:rows
         }
         )
    }
@@ -323,6 +389,8 @@ export const DeleteConversationById:RequestHandler=async(req,res)=>{
             })
         }
         const{id}=req.params;
+        console.log(id);
+        
     const {rowCount}= await pool.query(`update conversationmembers set deletedAt=now() where conversationid =$1 and uid=$2`,[id,req.user.userId]);
        if(!rowCount){
           return res.status(404).json({
@@ -340,4 +408,56 @@ catch(err){
         error:err
     })
 }
+}
+
+
+
+export const ConversationSeen:RequestHandler=async(req,res)=>{
+  
+  try{
+     if(!req?.user){
+      return res.status(401).json({
+          "message":"Not Authenticated"
+      })
+     }
+     const {userId}=req.user;
+     const {cid}=req.body;
+
+
+     const {rowCount,rows:[user]}= await pool.query<{uid:string,lastreadat:Date}>(`update conversationmembers set lastreadat=now() where uid=$1 and conversationid=$2 returning uid , lastreadat`,[userId,cid])
+     
+      if (rowCount === 0) {
+        return res.status(404).json({
+          message: "Conversation not found"
+        });
+      }
+      console.log("COnversation Members user is ", user)
+  const {rows:members}=await pool.query<{uid:string}>(`select uid from conversationmembers where conversationid=$1`,[cid]);
+        for(const member of members){
+            const ws=onlineUsers.get(member.uid);
+            ws?.send(JSON.stringify({
+                event:'seen',
+                cid,
+                readState:{
+                userId,
+                lastReadAt:user?.lastreadat
+            }
+            }))
+        }
+
+     
+     return res.status(204).json({
+      cid,
+      readState:{
+        userId:user?.uid,
+        lastReadAt:user?.lastreadat
+      }
+     })
+  }
+  catch(err){
+      return res.status(500).json({
+      "message": "Internal Server Error"
+     })
+    }
+
 }

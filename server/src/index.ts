@@ -46,7 +46,7 @@ app.use(morgan("dev"))
 app.use("/api/auth",AuthRouter)
 app.use("/api/users",userRouter);
 app.use("/api/conversations",ConversationRouter)
-app.use("/api/messages",MessageRouter);
+app.use("/api/message",MessageRouter);
 app.use("/",(req,res)=>{
     res.status(404).json({message:"Route not found"})
 })

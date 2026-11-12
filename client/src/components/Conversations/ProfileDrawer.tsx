@@ -8,16 +8,18 @@ import type { User } from '../../types/User';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../store/store';
 import GroupAvatar from './GroupAvatar';
+import { useCurrentConversation } from './CurrentConversationContext';
+import { useGetMe } from '../../hooks/useGetMe';
 type  ProfileDrawerProps={
-   OtherUser:ConversationListItem|undefined,
-   isGroup:boolean|undefined,
    setDelete:React.Dispatch<React.SetStateAction<boolean>>,
    setIsOpen:React.Dispatch<React.SetStateAction<boolean>>
 }
 
-const ProfileDrawer = ({isGroup,OtherUser,setIsOpen,setDelete}:ProfileDrawerProps) => {
-const{members}=OtherUser??{};
-const slicedFriends=OtherUser?.members.slice(0,3);
+const ProfileDrawer = ({setIsOpen,setDelete,slicedFriends,membersWithMe}:ProfileDrawerProps) => {
+const {currentConversation}=useCurrentConversation();
+const {members,groupimage,isgroup,title,updatedAt}=currentConversation??{};
+
+
 if(!members?.length) return; 
   return (
     <div className="sm:w-sm max-sm:w-screen">
@@ -25,11 +27,11 @@ if(!members?.length) return;
         <MdClose size={32} />
         </div>
       <div className="flex flex-col gap-4 items-center">
-        {isGroup?<GroupAvatar slicedFriends={slicedFriends} />:<Avatar image={OtherUser?.avatar}/>}
+        {isgroup?(!groupimage?<GroupAvatar slicedFriends={slicedFriends} />:<Avatar image={groupimage}/>):<Avatar image={members[0].image}/>}
         <div className="text-center pointer-events-none">
-        <p className="font-medium text-xl">{OtherUser?.title}</p>
-       {!isGroup?<p className="text-gray-700"> Online</p>:
-       <p>{members?.length} members</p>
+        <p className="font-medium text-xl">{title}</p>
+       {!isgroup?<p className="text-gray-700"> Online</p>:
+       <p>{membersWithMe?.length} members</p>
        }
         </div>
         <div className="flex  flex-col items-center">
@@ -44,7 +46,7 @@ if(!members?.length) return;
         </div>
       </div>
         <div className="px-3 py-5 space-y-3">
-          { !isGroup?<> 
+          { !isgroup?<> 
             <div className="flex gap-2 max-sm:flex-col">
                 <p className="text-xl text-neutral-700">Email:</p>
                 <p className="text-xl max-sm:text-sm text-neutral-900  wrap-break-word">{members[0]?.email}</p>
@@ -52,7 +54,7 @@ if(!members?.length) return;
             <div className="flex  gap-2 max-sm:flex-col">
                 <p className="text-xl text-neutral-700">Joined On:</p>
                 <p className="text-xl max-sm:text-sm text-neutral-900">{
-                OtherUser?.updatedAt ? new Date(OtherUser.updatedAt).toLocaleDateString("en-US",{
+                updatedAt ? new Date(updatedAt).toLocaleDateString("en-US",{
                         month:'short',
                         day:'numeric',
                         year:'numeric'
@@ -65,7 +67,7 @@ if(!members?.length) return;
               Group Members:
                
               {
-                members.map((member)=> 
+                membersWithMe?.map((member)=> 
                 <div className="flex gap-2 p-3 items-center">
                   <Avatar image={member.image}/>
                   <p className="text-2xl">{member.isMe?"You": member.name}</p>

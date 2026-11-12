@@ -2,7 +2,6 @@ import type { Request, RequestHandler, Response } from "express";
 import { pool } from "../db/connect";
 import { uploadToCloudinary } from "../helpers/UploadToCloudinary";
 import { onlineUsers } from "../src/types/OnlineUsers";
-import { create } from "domain";
 export const CreateMessageController=async(req:Request,res:Response)=>{
   const client=await pool.connect();
  try{
@@ -21,7 +20,6 @@ export const CreateMessageController=async(req:Request,res:Response)=>{
     }
       if(req.file){
       const uploaded=await uploadToCloudinary(req.file) ;
-      console.log(uploaded);
       imageUrl=uploaded.secure_url;
 
     }
@@ -30,25 +28,32 @@ export const CreateMessageController=async(req:Request,res:Response)=>{
     await client.query('BEGIN');
  
     const {rows:[messageRows]}=await client.query(
-      'insert into message (cid,body,image,senderId) values($1,$2,$3,$4) returning *',
+      'insert into messages (cid,body,image,senderid) values($1,$2,$3,$4) returning *',
       [conversationId,body,imageUrl,senderId]
     );
 
     await client.query('update conversation set lastmessageat=now() , lastmessageid=$1 where id=$2',[messageRows.id,conversationId])
-    const {rows:members}=await client.query<{uid:string}>('select uid from conversationmembers where conversationid=$1',[conversationId])
-     console.log("My members",messageRows)
+    const {rows:members}=await client.query<{uid:string,name:string,image:string}>('select uid,u.image,u.name from conversationmembers cm  join users u on cm.uid=u.id  where conversationid=$1',[conversationId])
 
     for(const member of members ){
       const userId=member.uid;
       console.log("Member UserId ",userId)
       const ws=onlineUsers.get(userId);
+   const modMessage={
+    body:messageRows.body,
+    image:messageRows.image,
+    conversationId,
+    createdAt:messageRows.createdat,
+    id:messageRows.id,
+    isMine:member.uid==senderId,
+    senderAvatar:member.image,
+    senderName: member.name
+   }
+
       ws?.send(JSON.stringify({
         event:"send",
-        message:{...messageRows,
-          isSeenByMe:member.uid==senderId,
-          isMine:member.uid==senderId,
-          seenby:[]}
-
+        message:{...modMessage}
+      
       }));
     }
 
@@ -74,85 +79,39 @@ finally{
 }
 }
 
-export const SeenMessageController:RequestHandler=async(req,res)=>{
+export const DeleteMessageController:RequestHandler=async(req,res)=>{
+ try{
 
-const client=await pool.connect()
-  try{
-       if(!req.user){
-        return res.status(400).json({
-          "message":"You are not authorized"
-        })
-       }
-      await  client.query('BEGIN');
-       const {userId}=req.user;
-       const {cid}=req.body;
-       const {rowCount,rows:[conversationid]}=await client.query<{id:string}>(`select id from conversation where id=$1`,[cid]);
-         if(!rowCount){
-          return res.status(404).json({
-            "message":" No Conversation  between you and partner"
-          })
-         }
-        const {rows:[user]}=await client.query<{name:string}>(`select name from users where id=$1`,[userId]);
-
-         const {rows}=await client.query<{id:string,senderid:string}>(`
-          SELECT m.id, m.senderid
-          FROM message m
-          WHERE m.cid = $1
-            AND m.senderid <> $2
-            AND NOT EXISTS (
-                SELECT 1
-                FROM seen s
-                WHERE s.mid = m.id
-                  AND s.seenid = $2)
-          `,[conversationid?.id,userId])
-
-         await client.query(`
-          INSERT INTO seen (mid, seenid)
-          SELECT m.id, $2
-          FROM message m
-          WHERE m.cid = $1
-            AND m.senderid <> $2
-            AND NOT EXISTS (
-                SELECT 1
-                FROM seen s
-                WHERE s.mid = m.id
-                  AND s.seenid = $2
-            )
-          `,[conversationid?.id,userId]);
-         await client.query('COMMIT');
-
-          const groupMap=new Map<string,string[]>();
-
-
-        for(const {id,senderid} of rows){
-             groupMap.set(senderid,[...(groupMap.get(senderid)||[]),id]);
-          }
-            
-          for(const [key,value] of groupMap.entries() ){
-            const ws=onlineUsers.get(key);
-            ws?.send(JSON.stringify({
-              event:"seen",
-              cid:conversationid,
-              messageIds:value,
-              seenBy:user?.name,
-              userId,  
-            }))
-          }
-         return res.status(200).json({
-            "message":"Message Seen Successfully"
-         })
-
-      }
-  catch(err:any){
-        await  client.query('ROLLBACK')
-         console.log(err)
-     return res.status(400).json({
-            "message":"Message Failed Successfully",
-            error:err
-         })
-
+    const {id}=req.body;
+    console.log("Deleting Message ID",id)
+    if(!id||!req.user){
+      return res.status(400).json({
+        message:"Message ID and User ID required"
+      })
+    }
+    const {userId}=req.user;
+   const {rowCount}= await pool.query(`insert into deletedmessages (mid,uid) values($1,$2) returning mid`,[id,userId])
+    
+   if(rowCount===0){
+    console.log("Message not found or already deleted")
+    return res.status(404).json({
+      message:"Message not found or already deleted"
+    })
+   }
+   console.log("Message Deleted Successfully",id)
+    return res.status(200).json({
+      message:"Message deleted successfully"
+    })
+  
   }
-  finally{
-    client.release();
-  }
+ catch(err:any){
+   res.status(500).json({
+    message:"Error deleting message",
+    error:err.message
+   })
+ }
+
 }
+
+
+

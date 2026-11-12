@@ -80,7 +80,7 @@ mutation.mutate(data)
 Don't have an account? <span onClick={()=>{change(); reset()}} className="text-sky-700 hover:underline cursor-pointer">Sign Up</span> 
     </p>
    </div>
-    </div>
+    </div>  
   )
 }
 

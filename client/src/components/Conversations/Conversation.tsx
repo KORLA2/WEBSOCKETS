@@ -6,25 +6,16 @@ import Form from "./Form";
 import { useOtherUser } from "../../hooks/useOtherUser";
 import useConversation from "../../hooks/useConversation";
 import { CurrentConversationProvider } from "./CurrentConversationContext";
+import { useMessages } from "../../hooks/useMessages";
 type Params={
   id: string | undefined
 }
 
 const Conversation = ({id}: Params) => {
-  const {myFriends}=useConversation();
+  const {myconversations}=useConversation();
 
-  const OtherUser=myFriends?.find(friend=>friend.id==id)
-  const fetchConversation=async(id:string | undefined)=>{
-    const res=await apiPrivate.get(`/conversations/${id}`);
-    return res.data;
-  }
-
-  const {data,isLoading,isError}=useQuery({
-    queryKey:["conversation",id],
-    queryFn:()=>fetchConversation(id),
-    enabled:!!id,
-  });
-console.log("Mydata is ",data)
+  const conversation=myconversations?.find(conv=>conv.id===id)
+  const {isLoading,isError}=useMessages(id);
   if(isLoading) 
     return <p>Loading....</p>
   if(isError){
@@ -35,13 +26,14 @@ console.log("Mydata is ",data)
         </p>
       </div>
     )
+    
   }  
   return (
     <div  className="flex lg: h-full w-full bg-orange-200 ">
       <div className="h-full flex w-full flex-col">
-        <CurrentConversationProvider value={{currentConversation: OtherUser}}>
-          <Header OtherUser={OtherUser} type={OtherUser?.type=='group'} />
-          <Body conversation={data?.messages}/>
+        <CurrentConversationProvider value={{currentConversation: conversation}}>
+          <Header/>
+          <Body id={id} />
           <Form/>
         </CurrentConversationProvider>
       </div>

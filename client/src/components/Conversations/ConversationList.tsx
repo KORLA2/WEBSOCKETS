@@ -5,9 +5,11 @@ import ConversationBox from './ConversationBox';
 import GroupChat from './GroupChat';
 
 const ConversationList = () => {
-  const {myFriends,isOpen,conversationId}=useConversation();
+  const {myconversations,isOpen,conversationId,isLoading,isError}=useConversation();
   const [isGroup,setisGroup]=useState<boolean>(false);
-  console.log(myFriends);
+  console.log("My Conversations are ",myconversations)
+  if(isLoading)return <h1>Loading...</h1>
+   if(isError) return <p>Somthign Wrong...</p>
   return (
     <>
    { isGroup&&
@@ -18,12 +20,12 @@ const ConversationList = () => {
    <div className="px-5">
     <div className="flex justify-between mb-4 pt-4 items-center">
       <div className="text-neutal-700 text-2xl  font-bold">Messages</div>
-      <div onClick={()=>setisGroup(!isGroup)} className="rounded-full cursor-pointer hover:opacity-75 bg-black p-2 text-rose-600 transition ">
+      <div onClick={()=>setisGroup(!isGroup)} className="rounded-full cursor-pointer hover:opacity-75 bg-black p-3 text-rose-600 transition ">
        <MdOutlineGroupAdd size={20}/>
       </div>
     </div>
       {
-        myFriends?.length?myFriends?.map((item)=><ConversationBox
+        myconversations?.length?myconversations?.map((item)=><ConversationBox
           key={item.id}
           id={item.id}
           data={item}

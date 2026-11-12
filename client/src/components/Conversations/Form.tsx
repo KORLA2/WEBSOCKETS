@@ -14,7 +14,7 @@ const {conversationId}=useConversation()
             image:null
         }
     })
-    const image=watch('image')
+    const image=watch('image');
 const  preview=React.useMemo(()=>
  image?.length>0?URL.createObjectURL(image[0]):"",[image]);
 
@@ -33,7 +33,7 @@ const mutation=useMutation({
         formData.append("image", data.image[0]);
       }
         formData.append("conversationId",conversationId!)
-         const res=await apiPrivate.post("/messages/send",formData
+         const res=await apiPrivate.post("/message/send",formData
         )
          return res.data;
     },

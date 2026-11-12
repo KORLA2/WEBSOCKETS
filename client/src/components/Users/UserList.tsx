@@ -18,7 +18,7 @@ const userId=useSelector((state:RootState)=>state.authSlice.userId)
            {isLoading&&<p className="text-sm text-neutral-700">Loading users...</p>}
            {isError&&<p className="text-sm text-red-700">Unable to load users</p>}
             {
-                users.map((user,idx)=>(
+                users.map((user)=>(
                     <UserBox key={user.id} user={user}/>
                 ))
             }

@@ -16,7 +16,7 @@ image:string,
 isMine:boolean,
 senderId:string,
 senderName:string,
-createdat:Date,
+createdAt:Date,
 isSeenByMe:boolean
 }
 export type ConversationListItem = {
