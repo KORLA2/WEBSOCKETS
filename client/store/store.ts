@@ -2,11 +2,13 @@ import {configureStore} from '@reduxjs/toolkit';
 import authReducer from './slices/authSlice';
 import conReducer from "./slices/ConversationSlice"
 import userReducer from "./slices/UserSlice"
+import wsReducer from "./slices/wsSlice"
 const store = configureStore({
     reducer:{
       authSlice:authReducer,
       conSlice: conReducer,
-      userSlice:userReducer
+      userSlice:userReducer,
+      wsReducer:wsReducer
     }
 })
 export default store;

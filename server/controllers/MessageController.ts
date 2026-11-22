@@ -37,8 +37,8 @@ export const CreateMessageController=async(req:Request,res:Response)=>{
 
     for(const member of members ){
       const userId=member.uid;
-      console.log("Member UserId ",userId)
-      const ws=onlineUsers.get(userId);
+      const userSockets=onlineUsers.get(userId);
+      if(!userSockets) continue;
    const modMessage={
     body:messageRows.body,
     image:messageRows.image,
@@ -49,13 +49,16 @@ export const CreateMessageController=async(req:Request,res:Response)=>{
     senderAvatar:member.image,
     senderName: member.name
    }
+   for(const socket of userSockets ){
 
-      ws?.send(JSON.stringify({
-        event:"send",
-        message:{...modMessage}
-      
-      }));
-    }
+     socket?.send(JSON.stringify({
+       event:"send",
+       message:{...modMessage}
+     
+     }));
+
+   }
+  }
 
     await client.query('COMMIT'); 
     return res.status(201).json({
@@ -83,7 +86,6 @@ export const DeleteMessageController:RequestHandler=async(req,res)=>{
  try{
 
     const {id}=req.body;
-    console.log("Deleting Message ID",id)
     if(!id||!req.user){
       return res.status(400).json({
         message:"Message ID and User ID required"
@@ -93,12 +95,10 @@ export const DeleteMessageController:RequestHandler=async(req,res)=>{
    const {rowCount}= await pool.query(`insert into deletedmessages (mid,uid) values($1,$2) returning mid`,[id,userId])
     
    if(rowCount===0){
-    console.log("Message not found or already deleted")
     return res.status(404).json({
       message:"Message not found or already deleted"
     })
    }
-   console.log("Message Deleted Successfully",id)
     return res.status(200).json({
       message:"Message deleted successfully"
     })
@@ -111,6 +111,119 @@ export const DeleteMessageController:RequestHandler=async(req,res)=>{
    })
  }
 
+}
+
+export const AddReactionController:RequestHandler=async(req,res)=>{
+  const client = await pool.connect();
+  try{
+       const {mid,cid,emoji}=req.body;
+        if(!mid||!cid||!emoji||!req.user){
+          return res.status(400).json({
+            message:"Message ID, Conversation ID, Emoji and User ID required"
+          })
+        }
+        await client.query("BEGIN");
+        const {userId}=req.user;
+        const {rowCount}=await client.query(`select 1 from conversationmembers where conversationid=$1 and uid=$2`,[cid,userId]);
+        if(!rowCount){
+          return res.status(403).json({
+            message:"You Cannot react to the message if you are not a member of this conversation"
+          })
+        }
+        const {rows:[existingResult]}=await client.query(
+              `
+              SELECT emoji FROM reactions  WHERE mid = $1  AND uid = $2  FOR UPDATE
+              `,
+              [mid, userId]
+            );
+       let action, oldEmoji = null;
+       let newEmoji = null;
+        if (!existingResult) {
+          await client.query(
+            `
+            INSERT INTO reactions (mid, uid, emoji)
+            VALUES ($1, $2, $3)
+            `,
+            [mid, userId, emoji]
+          );
+
+          action = "added";
+          newEmoji = emoji;
+        }
+
+         // User clicked the same emoji: remove it
+          else if (existingResult.emoji === emoji) {
+            await client.query(
+              `
+              DELETE FROM reactions
+              WHERE mid = $1
+                AND uid = $2
+              `,
+              [mid, userId]
+            );
+
+            action = "removed";
+            oldEmoji = emoji;
+          }
+          else {
+            await client.query(
+              `
+              UPDATE reactions
+              SET emoji = $3
+              WHERE mid = $1
+                AND uid = $2
+              `,
+              [mid, userId, emoji]
+            );
+
+            action = "changed";
+            oldEmoji = existingResult.emoji;
+            newEmoji = emoji;
+          }
+
+
+       const {rows:members}= await pool.query<{uid:string}>(`select uid from conversationmembers where conversationid=$1`,[cid]);
+
+       for(let member of members){
+        const userSockets=onlineUsers.get(member.uid);
+        if(!userSockets) continue;
+       for(const socket of userSockets ){
+           socket.send(JSON.stringify({
+            event:"reaction",
+            reaction:{
+              mid,
+              action,
+              oldEmoji,
+              newEmoji,
+              uid:userId
+            },              
+            cid
+       }))
+       }
+       
+       } 
+  await client.query('COMMIT')
+        return res.status(201).json({
+          message:"Reaction added successfully",
+          reaction:{
+            mid,
+            emoji,
+            uid:userId
+          }
+        })
+  }
+  catch(err:any){
+  await client.query('ROLLBACK')
+    console.error("Error adding reaction",err)
+    return res.status(500).json({
+      message:"Error adding reaction",
+      error:err.message
+    })
+  }
+
+  finally{
+    client.release();
+  }
 }
 
 

@@ -143,11 +143,11 @@ try{
           message:"You are not authorized to access this conversation "
         })
       }
-  console.log(member?.deletedat,"This is the deleted at value")
 
   const [messagesResult, readStatesResult] = await Promise.all([ pool.query(
         `
-        SELECT
+ WITH  mymessages AS( 
+           SELECT
             m.id AS id,
             m.cid AS "conversationId",
             m.body,
@@ -156,8 +156,7 @@ try{
             m.image as "image"    ,
             u.name AS "senderName",
             u.image AS "senderAvatar",
-
-            (m.senderid = $2) AS "isMine"
+           (m.senderid = $2) AS "isMine"
 
         FROM messages m
 
@@ -171,9 +170,41 @@ try{
             WHERE dm.mid = m.id and dm.uid = $2
         )
         AND m.createdat> COALESCE($3, '1970-01-01'::timestamp)
-        ORDER BY
-            m.createdat ASC,
-            m.id ASC
+            
+       ),
+
+    reactionsCount AS (
+        select 
+        r.mid,
+        count(*) as count,
+        BOOL_OR(r.uid=$2) as "reactedByMe",
+        r.emoji 
+        from reactions r
+        join mymessages mm 
+        on mm.id=r.mid
+        group by r.mid,r.emoji
+    ),
+
+    myreactions AS(
+       select rc.mid, jsonb_agg(
+         jsonb_build_object(
+            'emoji',rc.emoji,
+            'count',rc.count,
+            'reactedByMe',rc."reactedByMe"
+         )
+       ) as reactions
+       from  reactionsCount rc
+       group by rc.mid
+  )
+
+    select mm.*, COALESCE(mr.reactions, '[]'::jsonb) as reactions
+    from mymessages mm
+    left join myreactions mr on mr.mid=mm.id
+     ORDER BY
+     mm."createdAt", 
+     mm.id 
+
+    
         `,
         [id, userId,member?.deletedat]
       ),
@@ -198,7 +229,6 @@ try{
        )    
     
     ])
- 
     return res.status(200).json({
       messages: messagesResult.rows,
       readStates: readStatesResult.rows,
@@ -363,9 +393,6 @@ ORDER BY
   `,
   [userId]
 );
-    console.log("This is my rows",+rows)
-
-
 
         return res.status(200).json({
             myconversations:rows
@@ -389,7 +416,6 @@ export const DeleteConversationById:RequestHandler=async(req,res)=>{
             })
         }
         const{id}=req.params;
-        console.log(id);
         
     const {rowCount}= await pool.query(`update conversationmembers set deletedAt=now() where conversationid =$1 and uid=$2`,[id,req.user.userId]);
        if(!rowCount){
@@ -431,18 +457,20 @@ export const ConversationSeen:RequestHandler=async(req,res)=>{
           message: "Conversation not found"
         });
       }
-      console.log("COnversation Members user is ", user)
   const {rows:members}=await pool.query<{uid:string}>(`select uid from conversationmembers where conversationid=$1`,[cid]);
         for(const member of members){
-            const ws=onlineUsers.get(member.uid);
-            ws?.send(JSON.stringify({
-                event:'seen',
-                cid,
-                readState:{
-                userId,
-                lastReadAt:user?.lastreadat
-            }
-            }))
+            const userSockets=onlineUsers.get(member.uid);
+            if(!userSockets) return ;
+               for(const socket of userSockets ){
+                 socket?.send(JSON.stringify({
+                    event:'seen',
+                    cid,
+                    readState:{
+                    userId,
+                    lastReadAt:user?.lastreadat
+                }
+                }))
+               }
         }
 
      
@@ -460,4 +488,27 @@ export const ConversationSeen:RequestHandler=async(req,res)=>{
      })
     }
 
+}
+
+
+export const getConversationMembers=async(cid:string,userId:string)=>{
+console.log(cid,userId)
+
+  const [membersResult,imageResult]=await Promise.all([  pool.query<{uid:string}>(`
+         select cm.uid from conversationmembers cm 
+         join users u on cm.uid=u.id
+         where cm.conversationid=$1 and cm.uid<>$2 and 
+         exists( select 1 from conversationmembers me where me.conversationid=$1 and me.uid=$2 )
+        
+        `,[cid,userId]),
+        pool.query(`
+            select image from users where id=$1
+            `,[userId])
+    ])
+        
+return {
+    members:membersResult.rows,
+    avatar:imageResult.rows
+};
+ 
 }

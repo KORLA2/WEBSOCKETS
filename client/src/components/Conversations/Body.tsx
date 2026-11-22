@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiPrivate } from '../../api/api';
 import useConversation from '../../hooks/useConversation';
 import axios from 'axios';
-import { useCurrentConversation } from './CurrentConversationContext';
+import { useCurrentConversation } from '../../helpers/contexts/CurrentConversationContext';
 import { useMessages } from '../../hooks/useMessages';
 type ConversationProps={
   conversation:(Message&{

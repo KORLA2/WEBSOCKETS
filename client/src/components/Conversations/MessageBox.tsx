@@ -3,7 +3,7 @@ import type { Message } from '../../types/Message';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../store/store';
 import Avatar from '../Avatar';
-import { useCurrentConversation } from './CurrentConversationContext';
+import { useCurrentConversation } from '../../helpers/contexts/CurrentConversationContext';
 import { formatTime } from '../../helpers/formtTime';
 import { MdDelete, MdDeleteOutline, MdMenu } from 'react-icons/md';
 import { FaDeleteLeft, FaEllipsis } from 'react-icons/fa6';
@@ -23,16 +23,20 @@ const MessageBox = ({message,isgroup,showSeen,readStates}:MessageBoxProps) => {
 const [menuOpen,setMenuOpen]=useState<boolean>(false)
   const {userId, image}=useSelector((state:RootState)=>state.authSlice)
   const {currentConversation}=useCurrentConversation();
+  const availableEmojis= ["👍","👎" ,"❤️", "😂", "😮", "😢", "👏"];
+
+const {id:cid}=currentConversation??{};
 const isMyMessage=message.isMine;
 const {id}=message;
 const seenList=readStates.filter(user=>user.lastReadAt&& (new Date(message.createdAt).getTime()<=new Date(user.lastReadAt).getTime()))
 const OtherUserimage=currentConversation?.members.find(member=>member.id===message.senderid)?.image;
-const container=` group  group-hover:cursor-pointer flex flex-col gap-3 w-full  p-2 ${isMyMessage?'items-end':''}`
+const container=` group  group-hover:cursor-pointer flex flex-col gap-2 w-full  p-2 ${isMyMessage?'items-end':''}`
 const avatar=`${isMyMessage?'order-2':''}`
-const body=`flex flex-col rounded-lg  gap-2 ${isMyMessage?'items-end':''}`
+const body=`flex flex-col rounded-lg   ${isMyMessage?'items-end':''}`
 const messages =`text-sm w-fit md:max-w-md max-w-72  break-words ${isMyMessage?'bg-rose-400 text-white text-right':'bg-gray-200'}
 ${message.image?'rounded-lg p-1':'rounded-lg py-2 px-3'}
 `
+
 const queryClient=useQueryClient();
  const mutation=useMutation({
   mutationFn:async()=>{
@@ -68,6 +72,32 @@ queryClient.invalidateQueries({queryKey:['conv']});
   }
 
  })
+
+const reactionmutation=useMutation({
+  mutationFn:async(emoji:string)=>{
+
+    const res=await apiPrivate.post("/message/addreaction",{
+      mid:id,
+      cid,
+      emoji
+    });
+    return res.data;
+  },
+  onSuccess:(data)=>{
+
+
+
+
+  },
+  onError:()=>{}
+    
+})
+const handleAddReaction=async(emoji:string)=>{
+
+reactionmutation.mutate(emoji)
+}
+
+
 return (
     <div className={`${container} scroll-smooth `} >
       <div className="flex  items-center gap-3 ">
@@ -75,7 +105,7 @@ return (
             <div className="text-sm text-gray-500">{message.senderName}</div>
             <div className="text-xs text-neutral-800">{formatTime(message.createdAt)}</div>
       </div>
-     <div  className={` relative w-full flex items-center gap-2 ${
+     <div  className={` relative w-full flex   items-center  ${
         isMyMessage ? "justify-end" : "justify-start"
       }`}>
       <div className={`absolute  group-hover:flex    
@@ -87,13 +117,18 @@ return (
       z-50
       bg-white
       shadow-md
-      rounded-lg
+      rounded-xl
       p-1
       ${isMyMessage ? "left-0" : "right-0 "}
       `}
       >
-      <button className="cursor-pointer"> 👍</button>
-      <button  className="cursor-pointer">👎</button>
+    {
+      availableEmojis.map((emoji) => (
+        <button key={emoji} className="text-xl cursor-pointer" onClick={()=>handleAddReaction(emoji)}>
+          {emoji}
+        </button>
+      ))
+    }
 
   { isMyMessage&&<button className='cursor-pointer' onClick={()=>{setMenuOpen(prev=>!prev)}}>
       <FaEllipsis/>
@@ -172,12 +207,13 @@ return (
     )
    }
       </div>
-    <div className={`${body} group-hover:bg-gray-300/70 hover:cursor-pointer w-full`}>
-        <div className="flex items-center gap-2 ">
+    <div className={`${body} group-hover:bg-gray-300/20 hover:cursor-pointer w-full`}>
+        <div className="flex items-start  gap-2 ">
                <div className={avatar}>
                   <Avatar image={isMyMessage ? image : OtherUserimage}/>
                </div>
-      <div className={`${messages}`}>
+       <div className={`flex flex-col ${isMyMessage?'items-end':'items-start'}`}>      
+      <div className={`${messages} `}>
         {message.image&&(<img src={message.image} className="object-cover rounded-lg max-h-72 w-full max-w-70 cursor-pointer
           transition translate"/>)
         }
@@ -188,9 +224,19 @@ return (
         </p>
     
       </div>
+      <div className={`flex gap-2 items-center  mt-1 max-sm:grid grid-cols-4 max-sm:gap-2 ${isMyMessage?'justify-start':'justify-end'}`}>
+
+     {
+       message?.reactions?.map((reaction)=>(<button key={reaction.emoji} className="text-xl rounded-lg  bg-gray-200 cursor-pointer" >
+          {reaction.emoji} {reaction.count}
+        </button>))
+     }
+     </div>
+     </div>
         </div>
   
     </div>
+
     </div>
     {
 

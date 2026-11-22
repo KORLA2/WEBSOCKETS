@@ -68,7 +68,6 @@ const mutation=useMutation({
     <HiPhoto size={30}  className="text-sky-500 cursor-pointer hover:text-gray-700 transition"/>
     </label> 
         <input
-          key={fileInputKey}
            id="profile-image"
           type="file"
           accept="image/*"
@@ -79,6 +78,7 @@ const mutation=useMutation({
       placeholder="Enter a message..."
       id="message"
       register={register}
+      cid={conversationId}
       image={preview}
       errors={errors}
       required={false}

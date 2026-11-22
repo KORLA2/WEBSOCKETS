@@ -9,7 +9,7 @@ import { FiAlertTriangle } from "react-icons/fi";
 import {useMutation, useQueryClient} from "@tanstack/react-query";
 import { apiPrivate } from "../../api/api";
 import GroupAvatar from "./GroupAvatar";
-import { CurrentConversationProvider, useCurrentConversation } from "./CurrentConversationContext";
+import { CurrentConversationProvider, useCurrentConversation } from "../../helpers/contexts/CurrentConversationContext";
 import { useGetMe } from "../../hooks/useGetMe";
 type HeaderProps={
   OtherUser:ConversationListItem|undefined,
@@ -23,7 +23,7 @@ const {currentConversation}=useCurrentConversation();
 console.log("My Conversation specific is ",currentConversation)
 const [IsOpen,setIsOpen]=useState<boolean>(false);
 const [isdelete,setDelete]=useState<boolean>(false);
-const{title,members,groupimage,isgroup}=currentConversation??{};
+const{title,members,groupimage,isgroup,Typing}=currentConversation??{};
 const navigate=useNavigate();
 const queryClient=useQueryClient();
 const {data}=useGetMe();
@@ -78,6 +78,7 @@ const handleDeleteConversation=async()=>{
           Online
         </div>:<div>{members?.length?members.length+1:""} members</div>}
       </div>
+      {  Typing&&user.userId!==Typing.userid&&<p> <Avatar image={Typing.image}/>Typing...</p>}
      </div>
   <HiEllipsisHorizontal onClick={()=>setIsOpen((prev)=>!prev)} size={32} className="text-rose-500 cursor-pointer hover:text-gray-700 transition"/>
     {

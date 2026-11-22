@@ -5,7 +5,7 @@ import Body from "./Body";
 import Form from "./Form";
 import { useOtherUser } from "../../hooks/useOtherUser";
 import useConversation from "../../hooks/useConversation";
-import { CurrentConversationProvider } from "./CurrentConversationContext";
+import { CurrentConversationProvider } from "../../helpers/contexts/CurrentConversationContext";
 import { useMessages } from "../../hooks/useMessages";
 type Params={
   id: string | undefined

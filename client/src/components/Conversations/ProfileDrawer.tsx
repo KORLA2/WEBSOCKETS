@@ -8,7 +8,7 @@ import type { User } from '../../types/User';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../store/store';
 import GroupAvatar from './GroupAvatar';
-import { useCurrentConversation } from './CurrentConversationContext';
+import { useCurrentConversation } from '../../helpers/contexts/CurrentConversationContext';
 import { useGetMe } from '../../hooks/useGetMe';
 type  ProfileDrawerProps={
    setDelete:React.Dispatch<React.SetStateAction<boolean>>,

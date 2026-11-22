@@ -137,7 +137,6 @@ export const rotateTokens:RequestHandler=async (req,res)=>{
 export const Logout:RequestHandler= async (req,res)=>{
    try{
         const refToken=req.cookies.refreshToken;
-        console.log("refresh Token:", refToken)
         if(!refToken){
             return res.status(400).json({
                 message:"No Token found"
@@ -168,7 +167,6 @@ export const Logout:RequestHandler= async (req,res)=>{
 
 export const GetMe:RequestHandler=async(req,res)=>{
     try{
- console.log("Hellooooooooooooo")
     const refreshToken=req.cookies.refreshToken;
     if(!refreshToken){
         return res.status(401).json({

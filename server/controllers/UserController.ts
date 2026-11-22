@@ -32,7 +32,6 @@ try{
 
 if(req.file){
    const uploaded=await uploadToCloudinary(req.file) ;
-  console.log(uploaded);
   imageUrl=uploaded.secure_url;
 
 }

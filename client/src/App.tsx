@@ -1,11 +1,11 @@
 import axios from 'axios';
 import {Navigate, Route, Routes, useNavigate, useSearchParams} from "react-router-dom"
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import Auth from './components/Auth/Auth';
 import api, { apiPrivate } from './api/api';
 import { setUser } from '../store/slices/authSlice';
-import { useDispatch } from 'react-redux';
+import { Provider, useDispatch } from 'react-redux';
 import Page from './components/Users/Page';
 import GuestRoute from './Routes/GuestRoute';
 import PrivateRoute from './Routes/PrivateRoute';
@@ -15,18 +15,54 @@ import type { Message } from './types/Message';
 import type { GetConversationResponse } from './hooks/useConversation';
 import type { ConversationListItem } from './types/Conversation';
 import { useGetMe } from './hooks/useGetMe';
+import store from '../store/store';
+import { setWebSocket } from '../store/slices/wsSlice';
+import { WebSocketContextProvider } from './helpers/contexts/WebSocketContext';
 type ConversationData = {
   messages: Message[];
 };
+
+
+const changeReactionCount=(reactions,emoji,amount)=>{
+   let existingReaction=reactions.find(reaction=>reaction.emoji==emoji);
+
+    if(!existingReaction&&amount>0){
+      return [
+         ...reactions,
+         {
+            count:1,
+            reactedByMe:false,
+            emoji
+         }
+      ]
+    }
+   else if(!existingReaction){
+   return reactions;
+   }
+
+
+   const updatedCount=existingReaction.count+amount; 
+   if(updatedCount==0){
+      return reactions.filter(reaction=>reaction.emoji!==emoji)
+   }
+  return  reactions.map(reaction=>reaction.emoji==emoji?{
+   ...reaction,
+   count:updatedCount
+  }:reaction)
+
+}
+
+
 const App = () => {
    const queryClient=useQueryClient();
-  const dispatch=useDispatch<AppDispatch>();
-  const navigate= useNavigate();
-  const {data:user,isLoading}=useGetMe()
+   const wsRef=useRef<WebSocket|null>(null);
+   const {data:user,isLoading}=useGetMe();
+   const dispatch=useDispatch();
 useEffect(()=>{
 
    if(!user)return;
-   const ws=new WebSocket("ws://localhost:4000");
+    const ws=new WebSocket("ws://localhost:4000");
+    wsRef.current=ws;
    ws.onopen=()=>{
       console.log("WebSocket Connected");
    }
@@ -116,23 +152,89 @@ useEffect(()=>{
 
 
           }
+          break;
+        case "reaction":{
+            queryClient.setQueryData(["conversation",data.cid],(old)=>{
+                if(!old) return ;
+                return {
+                  ...old,
+                  messages:old.messages.map(message=>{
 
-        
+                        if(message.id!==data.reaction.mid) return message;
+                        let reactions=message.reactions??[];
+
+                           if(data.reaction.action=="added"){
+                              reactions=changeReactionCount(
+                                 reactions,
+                                 data.reaction.newEmoji,
+                                 1
+                              );
+                           }
+                           else if(data.reaction.action=="changed"){
+                                 reactions=changeReactionCount(reactions,data.reaction.oldEmoji,-1);
+                                 reactions=changeReactionCount(reactions,data.reaction.newEmoji,1);
+
+                           }
+
+                           else if(data.reaction.action=="removed"){
+                              reactions=changeReactionCount(reactions,data.reaction.oldEmoji,-1);
+                           }
+
+                         if(data.reaction.uid==user.userId){
+                           reactions=reactions.map(reaction=>({
+                              ...reaction,
+                                 reactedByMe:data.reaction.action!=='removed'&&data.reaction.newEmoji==reaction.emoji 
+                           }))
+                         }
+
+                           return {
+                              ...message,
+                              reactions,
+                           }
+
+                  })
+                }
+            })
+        }
+        break;
+
+        case 'typing:start':{
+         console.log("Typing")
+           queryClient.setQueryData(["conv"],(old)=>{
+               if(!old) return;
+               return {
+                 myconversations:old.myconversations.map((conv)=>conv.id==data.cid?
+                 {...conv,
+                  Typing:{
+                     userid:data.userId,
+                     image:data.image,
+                  } 
+                 }
+                 :conv)
+               }
+           })
+        }
+        break;
+        case 'typing:stop':{
+         queryClient.invalidateQueries({queryKey:["conv"]})
+        }
        }  
 
    }
 
  
 return ()=>{
- ws.close()
+ ws.close();
+ wsRef.current=null;
 }
 
 },[user])
 
 
 if(isLoading) return <p>App Loading....</p>
-   return <div className="h-screen">
-<Routes>
+   return <WebSocketContextProvider value={{wsRef}}>
+ <div className="h-screen">
+ <Routes>
 
 <Route path="/" element={<Navigate to="/auth"/>}/>
 
@@ -146,7 +248,8 @@ if(isLoading) return <p>App Loading....</p>
    <Route path='*' element={<div>404 path not found</div>}/>
 </Routes>
    
-   </div>
+   </div>    
+   </WebSocketContextProvider>
 
   
 }

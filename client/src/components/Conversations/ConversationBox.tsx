@@ -24,9 +24,9 @@ const ConversationBox = ({
 const {user}=data??{}
 let  slicedFriends,membersWithMe;
   if(isgroup){
-  const {name:_,...rest}=user;
+  const {name:_,...rest}=user??{};
   membersWithMe=[
-    { id:user.userId,
+    { id:user?.userId,
       ...rest,
       isMe:true
     },
