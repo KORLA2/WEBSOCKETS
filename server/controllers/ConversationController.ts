@@ -151,9 +151,11 @@ try{
             m.id AS id,
             m.cid AS "conversationId",
             m.body,
+            m.attachment_url as "attachment",
+            m.attachment_type as "type",
+            m.attachment_name as "attachName",
             m.senderid AS "senderId",
             m.createdat AS "createdAt",
-            m.image as "image"    ,
             u.name AS "senderName",
             u.image AS "senderAvatar",
            (m.senderid = $2) AS "isMine"

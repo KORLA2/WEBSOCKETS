@@ -3,6 +3,6 @@ import {  CreateMessageController ,DeleteMessageController,AddReactionController
 import {ProtectRoute} from "../middleware/ProtectRoute";
 import { upload } from "../middleware/Multer";
 export const MessageRouter=Router();
-MessageRouter.post("/send",ProtectRoute,upload.single('image'),CreateMessageController);
+MessageRouter.post("/send",ProtectRoute,upload.single('attachment'),CreateMessageController);
 MessageRouter.delete("/delete",ProtectRoute,DeleteMessageController);
 MessageRouter.post("/addreaction",ProtectRoute,AddReactionController);

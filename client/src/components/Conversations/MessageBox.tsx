@@ -11,6 +11,7 @@ import { TiTick } from 'react-icons/ti';
 import { BsEye } from 'react-icons/bs';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiPrivate } from '../../api/api';
+import { GoDownload } from 'react-icons/go';
 type MessageBoxProps={
   message:(Message&{
     sendername: string,
@@ -21,15 +22,13 @@ type MessageBoxProps={
 
 const MessageBox = ({message,isgroup,showSeen,readStates}:MessageBoxProps) => {
 const [menuOpen,setMenuOpen]=useState<boolean>(false)
-  const {userId, image}=useSelector((state:RootState)=>state.authSlice)
   const {currentConversation}=useCurrentConversation();
   const availableEmojis= ["👍","👎" ,"❤️", "😂", "😮", "😢", "👏"];
 
 const {id:cid}=currentConversation??{};
 const isMyMessage=message.isMine;
-const {id}=message;
+const {id,senderName,senderAvatar,type,attachment,attachName}=message;
 const seenList=readStates.filter(user=>user.lastReadAt&& (new Date(message.createdAt).getTime()<=new Date(user.lastReadAt).getTime()))
-const OtherUserimage=currentConversation?.members.find(member=>member.id===message.senderid)?.image;
 const container=` group  group-hover:cursor-pointer flex flex-col gap-2 w-full  p-2 ${isMyMessage?'items-end':''}`
 const avatar=`${isMyMessage?'order-2':''}`
 const body=`flex flex-col rounded-lg   ${isMyMessage?'items-end':''}`
@@ -96,13 +95,15 @@ const handleAddReaction=async(emoji:string)=>{
 
 reactionmutation.mutate(emoji)
 }
-
+const isImage=type?.startsWith("image")
+const isAudio=type?.startsWith("audio")
+const isVideo=type?.startsWith("video")
 
 return (
     <div className={`${container} scroll-smooth `} >
       <div className="flex  items-center gap-3 ">
 
-            <div className="text-sm text-gray-500">{message.senderName}</div>
+            <div className="text-sm text-gray-500">{senderName}</div>
             <div className="text-xs text-neutral-800">{formatTime(message.createdAt)}</div>
       </div>
      <div  className={` relative w-full flex   items-center  ${
@@ -210,13 +211,57 @@ return (
     <div className={`${body} group-hover:bg-gray-300/20 hover:cursor-pointer w-full`}>
         <div className="flex items-start  gap-2 ">
                <div className={avatar}>
-                  <Avatar image={isMyMessage ? image : OtherUserimage}/>
+                  <Avatar image={senderAvatar}/>
                </div>
        <div className={`flex flex-col ${isMyMessage?'items-end':'items-start'}`}>      
       <div className={`${messages} `}>
-        {message.image&&(<img src={message.image} className="object-cover rounded-lg max-h-72 w-full max-w-70 cursor-pointer
-          transition translate"/>)
-        }
+          {
+
+            attachment&&(
+              <div>
+                {
+                isImage&&(<img src={attachment} className="object-cover rounded-lg max-h-72 w-full max-w-70 cursor-pointer
+                  transition translate"/>)
+                }
+                {
+
+                  isVideo && (
+                    <video
+                    src={attachment}
+                    controls
+                    className="w-full max-h-72 max-w-70 cursor-pointer rounded-lg"
+                    />
+                  )
+                }
+                {
+              isAudio && (
+                <audio
+                  src={attachment}
+                  controls
+                />
+              )
+
+                }
+                
+                {
+                  !isAudio&&!isImage&&!isVideo&&(
+                     <div className="w-full min-w-30 flex items-center justify-between max-h-72 cursor-pointer ">
+                         <p className="tracking-wider truncate"> {attachName} </p>
+                        <a href={attachment} download={attachName}>
+                           <GoDownload size={30}/>
+                        </a>
+
+
+
+                     </div> 
+                  )
+
+                }
+                  </div>
+            )
+          }
+        
+  
         <p className="text-sm px-1 pt-2">
         {
           message.body

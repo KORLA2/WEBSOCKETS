@@ -12,28 +12,40 @@ export const CreateMessageController=async(req:Request,res:Response)=>{
    }
     const{message,conversationId}=req.body;
     const body = typeof message === "string" ? message.trim() : null;
-    let imageUrl:string|null = null;
+    let attachmentUrl:string|null = null;
+    let type:string|null = null;
+    let attachName:string|null=null;
      if(!conversationId || (!body && !req.file)){
       return res.status(400).json({
         message:"conversation ID and message or image required"
       })
     }
-      if(req.file){
-      const uploaded=await uploadToCloudinary(req.file) ;
-      imageUrl=uploaded.secure_url;
 
+      if(req.file){
+      const uploaded=await uploadToCloudinary(req.file,req.file.mimetype) ;
+      attachmentUrl=uploaded.secure_url;
+        type=req.file.mimetype;
+        console.log(req.file)
+        attachName=req.file.originalname;
     }
     const {userId:senderId}=req.user;
 
     await client.query('BEGIN');
- 
+    const {rowCount}=await client.query(`select 1 from conversationmembers where conversationid=$1 and  uid=$2`,[conversationId,senderId]);
+    if(!rowCount){
+      return res.status(403).json({
+        message:"Not Authorized to send message"
+      })
+    }
+    const {rows:[user]}=await client.query<{image:string,name:string}>(`select image,name from users where id=$1`,[senderId]);
+   const {image,name}=user!;
     const {rows:[messageRows]}=await client.query(
-      'insert into messages (cid,body,image,senderid) values($1,$2,$3,$4) returning *',
-      [conversationId,body,imageUrl,senderId]
+      'insert into messages (cid,body,attachment_url,attachment_type,attachment_name,senderid) values($1,$2,$3,$4,$5,$6) returning *',
+      [conversationId,body,attachmentUrl,type,attachName,senderId]
     );
-
+    console.log("Inserted Message ",messageRows)
     await client.query('update conversation set lastmessageat=now() , lastmessageid=$1 where id=$2',[messageRows.id,conversationId])
-    const {rows:members}=await client.query<{uid:string,name:string,image:string}>('select uid,u.image,u.name from conversationmembers cm  join users u on cm.uid=u.id  where conversationid=$1',[conversationId])
+    const {rows:members}=await client.query<{uid:string}>('select uid from conversationmembers cm  join users u on cm.uid=u.id  where conversationid=$1',[conversationId])
 
     for(const member of members ){
       const userId=member.uid;
@@ -41,13 +53,16 @@ export const CreateMessageController=async(req:Request,res:Response)=>{
       if(!userSockets) continue;
    const modMessage={
     body:messageRows.body,
-    image:messageRows.image,
+    attachment:messageRows.attachment_url,
     conversationId,
+    type,
+    attachName,
     createdAt:messageRows.createdat,
     id:messageRows.id,
     isMine:member.uid==senderId,
-    senderAvatar:member.image,
-    senderName: member.name
+    senderAvatar:image,
+    senderName:name,
+
    }
    for(const socket of userSockets ){
 
